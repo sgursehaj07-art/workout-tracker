@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    >
+
+    <meta name="theme-color" content="#0d0d0f">
+
+    <meta
+        name="apple-mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="apple-mobile-web-app-status-bar-style"
+        content="black-translucent"
+    >
+
+    <meta
+        name="apple-mobile-web-app-title"
+        content="Workout Log"
+    >
+
+    <title>Workout Log</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div id="app">
+
+    <!-- ========================= -->
+    <!-- TOP BAR -->
+    <!-- ========================= -->
+
+    <header class="top-bar">
+
+        <div>
+            <div class="top-label">MY TRAINING</div>
+            <h1>Workout Log</h1>
+        </div>
+
+        <div
+            id="topSaveStatus"
+            class="save-indicator"
+        >
+            Saved
+        </div>
+
+    </header>
+
+
+    <!-- ========================= -->
+    <!-- LOG SCREEN -->
+    <!-- ========================= -->
+
+    <main
+        id="logScreen"
+        class="screen active-screen"
+    >
+
+        <section class="welcome-section">
+
+            <div class="section-label">
+                TODAY'S WORKOUT
+            </div>
+
+            <h2>What are we training?</h2>
+
+
+            <div class="workout-grid">
+
+                <button
+                    class="workout-choice"
+                    data-workout="Push Day"
+                >
+                    <span class="workout-emoji">🏋️</span>
+                    <span>Push Day</span>
+                </button>
+
+
+                <button
+                    class="workout-choice"
+                    data-workout="Pull Day"
+                >
+                    <span class="workout-emoji">💪</span>
+                    <span>Pull Day</span>
+                </button>
+
+
+                <button
+                    class="workout-choice"
+                    data-workout="Cardio + Abs"
+                >
+                    <span class="workout-emoji">🏃</span>
+                    <span>Cardio + Abs</span>
+                </button>
+
+
+                <button
+                    class="workout-choice"
+                    data-workout="Legs Day"
+                >
+                    <span class="workout-emoji">🦵</span>
+                    <span>Legs Day</span>
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <section
+            id="sessionArea"
+            class="hidden"
+        >
+
+            <section class="session-heading">
+
+                <div>
+
+                    <div class="section-label">
+                        CURRENT SESSION
+                    </div>
+
+                    <h2 id="currentWorkoutTitle">
+                        Push Day
+                    </h2>
+
+                </div>
+
+
+                <button
+                    id="newSessionButton"
+                    class="mini-button"
+                >
+                    New
+                </button>
+
+            </section>
+
+
+            <section class="app-card">
+
+                <div class="two-column">
+
+                    <div>
+
+                        <label for="workoutDate">
+                            Date
+                        </label>
+
+                        <input
+                            id="workoutDate"
+                            type="date"
+                        >
+
+                    </div>
+
+
+                    <div>
+
+                        <label for="bodyWeight">
+                            Body Weight
+                        </label>
+
+                        <input
+                            id="bodyWeight"
+                            type="number"
+                            step="0.1"
+                            placeholder="Optional"
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <label for="sessionLocation">
+                    Location
+                </label>
+
+                <input
+                    id="sessionLocation"
+                    type="text"
+                    placeholder="NYU, Planet Fitness, Home..."
+                >
+
+
+                <label for="sessionNote">
+                    Before-workout note
+                </label>
+
+                <textarea
+                    id="sessionNote"
+                    class="medium-textarea"
+                    placeholder="No straps today, gym packed, tired, trying something new..."
+                ></textarea>
+
+            </section>
+
+
+            <!-- CARDIO -->
+
+            <section
+                id="cardioSection"
+                class="app-card hidden"
+            >
+
+                <div class="card-title">
+                    Cardio
+                </div>
+
+
+                <label for="cardioType">
+                    Type
+                </label>
+
+                <select id="cardioType">
+
+                    <option value="Treadmill">
+                        Treadmill
+                    </option>
+
+                    <option value="Outdoor Run">
+                        Outdoor Run
+                    </option>
+
+                    <option value="StairMaster">
+                        StairMaster
+                    </option>
+
+                    <option value="Other">
+                        Other
+                    </option>
+
+                </select>
+
+
+                <div class="metric-grid">
+
+                    <div>
+                        <label>Calories</label>
+
+                        <input
+                            id="calories"
+                            type="number"
+                            placeholder="313"
+                        >
+                    </div>
+
+
+                    <div>
+                        <label>Distance</label>
+
+                        <input
+                            id="distance"
+                            type="number"
+                            step="0.01"
+                            placeholder="2.65 mi"
+                        >
+                    </div>
+
+
+                    <div>
+                        <label>Time</label>
+
+                        <input
+                            id="cardioTime"
+                            type="text"
+                            placeholder="30:28"
+                        >
+                    </div>
+
+
+                    <div>
+                        <label>Pace</label>
+
+                        <input
+                            id="pace"
+                            type="text"
+                            placeholder="11:27"
+                        >
+                    </div>
+
+
+                    <div>
+                        <label>Speed</label>
+
+                        <input
+                            id="speed"
+                            type="number"
+                            step="0.1"
+                            placeholder="5.2 mph"
+                        >
+                    </div>
+
+
+                    <div>
+                        <label>Feet Climbed</label>
+
+                        <input
+                            id="feetClimbed"
+                            type="number"
+                            placeholder="0"
+                        >
+                    </div>
+
+
+                    <div>
+                        <label>Steps</label>
+
+                        <input
+                            id="steps"
+                            type="number"
+                            placeholder="2174"
+                        >
+                    </div>
+
+
+                    <div>
+                        <label>SPM</label>
+
+                        <input
+                            id="spm"
+                            type="number"
+                            placeholder="62"
+                        >
+                    </div>
+
+                </div>
+
+
+                <label for="cardioNote">
+                    Cardio note
+                </label>
+
+                <textarea
+                    id="cardioNote"
+                    class="medium-textarea"
+                    placeholder="How it felt, pacing, treadmill differences..."
+                ></textarea>
+
+            </section>
+
+
+            <div id="exerciseList"></div>
+
+
+            <button
+                id="addExerciseButton"
+                class="add-exercise-button"
+            >
+                ＋ Add Exercise
+            </button>
+
+
+            <section class="app-card">
+
+                <label for="overallWorkoutNote">
+                    End-of-workout thoughts
+                </label>
+
+                <textarea
+                    id="overallWorkoutNote"
+                    class="large-textarea"
+                    placeholder="How did the workout feel? What should change next time?"
+                ></textarea>
+
+            </section>
+
+
+            <div class="bottom-space"></div>
+
+        </section>
+
+    </main>
+
+
+    <!-- ========================= -->
+    <!-- HISTORY SCREEN -->
+    <!-- ========================= -->
+
+    <main
+        id="historyScreen"
+        class="screen"
+    >
+
+        <div class="screen-heading">
+
+            <div class="section-label">
+                TRAINING LOG
+            </div>
+
+            <h2>Workout History</h2>
+
+        </div>
+
+
+        <div class="filter-scroll">
+
+            <button
+                class="history-filter active-filter"
+                data-filter="All"
+            >
+                All
+            </button>
+
+            <button
+                class="history-filter"
+                data-filter="Push Day"
+            >
+                Push
+            </button>
+
+            <button
+                class="history-filter"
+                data-filter="Pull Day"
+            >
+                Pull
+            </button>
+
+            <button
+                class="history-filter"
+                data-filter="Cardio + Abs"
+            >
+                Cardio + Abs
+            </button>
+
+            <button
+                class="history-filter"
+                data-filter="Legs Day"
+            >
+                Legs
+            </button>
+
+        </div>
+
+
+        <div id="historyList"></div>
+
+
+        <div class="bottom-space"></div>
+
+    </main>
+
+
+    <!-- ========================= -->
+    <!-- BACKUP SCREEN -->
+    <!-- ========================= -->
+
+    <main
+        id="backupScreen"
+        class="screen"
+    >
+
+        <div class="screen-heading">
+
+            <div class="section-label">
+                YOUR DATA
+            </div>
+
+            <h2>Backup & Export</h2>
+
+        </div>
+
+
+        <section class="backup-status-card">
+
+            <div class="backup-icon">
+                ☁️
+            </div>
+
+            <div>
+
+                <strong>
+                    Keep a second copy
+                </strong>
+
+                <p id="backupStatusText">
+                    No backup exported yet.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <section class="app-card">
+
+            <h3>
+                Full Backup
+            </h3>
+
+            <p class="help-text">
+                Saves every workout and draft in one file.
+                Keep this in iCloud Drive.
+            </p>
+
+
+            <button
+                id="exportBackupButton"
+                class="primary-action"
+            >
+                Export Full Backup
+            </button>
+
+
+            <button
+                id="importBackupButton"
+                class="secondary-action"
+            >
+                Restore From Backup
+            </button>
+
+
+            <input
+                id="importBackupInput"
+                class="hidden"
+                type="file"
+                accept=".json,application/json"
+            >
+
+        </section>
+
+
+        <section class="app-card">
+
+            <h3>
+                AI / Notes Export
+            </h3>
+
+            <p class="help-text">
+                Creates one readable text file containing
+                all of your workout history.
+            </p>
+
+
+            <button
+                id="exportTextButton"
+                class="secondary-action"
+            >
+                Export Workout History
+            </button>
+
+        </section>
+
+
+        <section class="app-card info-card">
+
+            <h3>
+                How your data works
+            </h3>
+
+            <p>
+                Your workout data stays on this device.
+                The website itself does not upload your
+                workout history anywhere.
+            </p>
+
+            <p>
+                Keep occasional backup files in iCloud Drive
+                in case you replace your phone or clear Safari data.
+            </p>
+
+        </section>
+
+
+        <div class="bottom-space"></div>
+
+    </main>
+
+
+    <!-- ========================= -->
+    <!-- FLOATING SAVE -->
+    <!-- ========================= -->
+
+    <div
+        id="saveDock"
+        class="save-dock hidden"
+    >
+
+        <button id="saveWorkoutButton">
+            Save Workout
+        </button>
+
+    </div>
+
+
+    <!-- ========================= -->
+    <!-- BOTTOM NAVIGATION -->
+    <!-- ========================= -->
+
+    <nav class="bottom-nav">
+
+        <button
+            class="nav-button active-nav"
+            data-screen="log"
+        >
+
+            <span class="nav-icon">
+                ＋
+            </span>
+
+            <span>
+                Log
+            </span>
+
+        </button>
+
+
+        <button
+            class="nav-button"
+            data-screen="history"
+        >
+
+            <span class="nav-icon">
+                ◷
+            </span>
+
+            <span>
+                History
+            </span>
+
+        </button>
+
+
+        <button
+            class="nav-button"
+            data-screen="backup"
+        >
+
+            <span class="nav-icon">
+                ⇩
+            </span>
+
+            <span>
+                Backup
+            </span>
+
+        </button>
+
+    </nav>
+
+</div>
+
+
+<script src="script.js"></script>
+
+</body>
+</html>
