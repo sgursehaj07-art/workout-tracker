@@ -1,6 +1,6 @@
 const STORAGE_KEY = "gursehajWorkoutTracker_v3";
-const PRE_RESTORE_KEY = "gursehajWorkoutTracker_preRestore_v4";
-const APP_VERSION = 4;
+const PRE_RESTORE_KEY = "gursehajWorkoutTracker_preRestore_v4_1";
+const APP_VERSION = 4.1;
 const BACKUP_REMINDER_DAYS = 7;
 const BACKUP_REMINDER_WORKOUTS = 3;
 
@@ -188,10 +188,18 @@ function formatDateTime(value) {
 }
 
 function workoutTimestamp(workout) {
-    const saved = new Date(workout?.savedAt || "").getTime();
-    if (Number.isFinite(saved)) return saved;
+    // Workout DATE controls training chronology. Editing an old workout should not
+    // suddenly make it the newest session just because it was updated today.
     const d = dateFromValue(workout?.date);
-    return d ? d.getTime() : 0;
+    if (d) {
+        const saved = new Date(workout?.savedAt || "");
+        const timeOfDay = Number.isFinite(saved.getTime())
+            ? saved.getHours() * 3600000 + saved.getMinutes() * 60000 + saved.getSeconds() * 1000 + saved.getMilliseconds()
+            : 0;
+        return d.getTime() + timeOfDay;
+    }
+    const saved = new Date(workout?.savedAt || "").getTime();
+    return Number.isFinite(saved) ? saved : 0;
 }
 
 function sortWorkoutsNewest(list) {
@@ -704,11 +712,12 @@ function legacySeedFor(name, type) {
 }
 
 function bestForExerciseName(name, type, excludeWorkoutId = null) {
+    // Legacy Best-So-Far values are only a fallback baseline. They must NEVER
+    // hide a better performance that is actually present in imported/saved history.
     const seed = legacySeedFor(name, type);
-    let sessions = getExerciseSessions(name, type, excludeWorkoutId).filter(s => s.performance);
-    if (seed) sessions = sessions.filter(s => !isImportedLegacyWorkout(s.workout));
-    const candidates = sessions.map(s => ({ ...s.performance, workout: s.workout }));
-    if (seed) candidates.push(seed);
+    const sessions = getExerciseSessions(name, type, excludeWorkoutId).filter(s => s.performance);
+    const candidates = sessions.map(s => ({ ...s.performance, workout: s.workout, source: "history" }));
+    if (seed) candidates.push({ ...seed, source: "legacy" });
     return chooseBestPerformance(candidates);
 }
 
@@ -971,23 +980,45 @@ function saveWorkout() {
     const prs = detectNewPRs(draft, existingId);
     const now = new Date().toISOString();
     const id = existingId || `workout_${Date.now()}`;
-    const workout = { ...draft, id, existingWorkoutId: undefined, savedAt: now };
+    const index = appData.workouts.findIndex(w => w.id === id);
+    const previousWorkout = index >= 0 ? appData.workouts[index] : null;
+    const workout = {
+        ...draft,
+        id,
+        existingWorkoutId: undefined,
+        savedAt: previousWorkout?.savedAt || now,
+        updatedAt: existingId ? now : (previousWorkout?.updatedAt || null)
+    };
     delete workout.existingWorkoutId;
 
-    const index = appData.workouts.findIndex(w => w.id === id);
     if (index >= 0) appData.workouts[index] = workout;
     else appData.workouts.push(workout);
 
-    currentDraft = { ...draft, existingWorkoutId: id, savedAt: now };
-    appData.drafts[currentWorkoutType] = currentDraft;
+    if (existingId) {
+        // Editing is complete. Immediately leave edit mode and prepare a clean
+        // session of the same workout type so the old workout never stays loaded.
+        currentDraft = freshDraft(currentWorkoutType);
+        appData.drafts[currentWorkoutType] = currentDraft;
+    } else {
+        // A newly saved workout stays available for a quick correction if needed.
+        currentDraft = { ...draft, existingWorkoutId: id, savedAt: now };
+        appData.drafts[currentWorkoutType] = currentDraft;
+    }
+
     saveAppData();
     renderDraft();
     renderProgress();
 
-    if (prs.length) {
+    if (existingId) {
+        showToast(prs.length
+            ? `Workout updated · 🏆 ${prs.length} PR${prs.length > 1 ? "s" : ""}. New session ready.`
+            : "Workout updated. New session ready.",
+            Boolean(prs),
+            3600);
+    } else if (prs.length) {
         showToast(`🏆 NEW PR${prs.length > 1 ? "S" : ""}\n${prs.slice(0, 4).join("\n")}${prs.length > 4 ? `\n+${prs.length - 4} more` : ""}`, true, 4200);
     } else {
-        showToast(index >= 0 ? "Workout updated." : "Workout saved.");
+        showToast("Workout saved.");
     }
 }
 
@@ -1035,18 +1066,54 @@ historyFilters.forEach(button => {
     });
 });
 
-function workoutCurrentPrCount(workout) {
-    let count = 0;
+function workoutCurrentPRs(workout) {
+    const prs = [];
     (workout.exercises || []).forEach(ex => {
+        if (ex.excludeFromPR) return;
         const perf = bestPerformanceForExercise(ex);
         if (!perf) return;
-        const best = bestForExerciseName(ex.name, workout.workoutType, null);
-        if (best?.workout?.id === workout.id) count++;
+        const name = canonicalExerciseName(ex.name, workout.workoutType);
+        const best = bestForExerciseName(name, workout.workoutType, null);
+        if (best?.workout?.id === workout.id) {
+            prs.push({ name, display: best.display, kind: "exercise" });
+        }
     });
     if (workout.workoutType === "Cardio + Abs") {
-        getCardioBestRows().forEach(row => { if (row.workoutId === workout.id) count++; });
+        getCardioBestRows().forEach(row => {
+            if (row.workoutId === workout.id) prs.push({ name: row.name, display: row.display, kind: "cardio" });
+        });
     }
-    return count;
+    return prs;
+}
+
+function workoutCurrentPrCount(workout) {
+    return workoutCurrentPRs(workout).length;
+}
+
+function createHistoryPRDetails(workout) {
+    const prs = workoutCurrentPRs(workout);
+    if (!prs.length) return null;
+
+    const section = document.createElement("section");
+    section.className = "history-pr-details";
+
+    const heading = document.createElement("div");
+    heading.className = "history-pr-details-title";
+    heading.textContent = "🏆 Current bests from this workout";
+    section.appendChild(heading);
+
+    prs.forEach(pr => {
+        const row = document.createElement("div");
+        row.className = "history-pr-detail-row";
+        const name = document.createElement("strong");
+        name.textContent = pr.name;
+        const value = document.createElement("span");
+        value.textContent = pr.display;
+        row.append(name, value);
+        section.appendChild(row);
+    });
+
+    return section;
 }
 
 function renderHistory() {
@@ -1083,6 +1150,7 @@ function renderHistory() {
         }
         summary.appendChild(row);
 
+        const prDetails = createHistoryPRDetails(workout);
         const pre = document.createElement("pre");
         pre.textContent = workoutToText(workout);
         const actions = document.createElement("div");
@@ -1135,7 +1203,9 @@ function renderHistory() {
         });
 
         actions.append(copy, edit, del);
-        details.append(summary, pre, actions);
+        details.appendChild(summary);
+        if (prDetails) details.appendChild(prDetails);
+        details.append(pre, actions);
         historyList.appendChild(details);
     });
 }
@@ -1276,10 +1346,11 @@ function renderSelectedExerciseProgress() {
     }
     const best = bestForExerciseName(name, type, null);
     const latest = sessionsNewest[0];
+    const previous = sessionsNewest[1] || null;
     const trend = trendFromSessions(sessionsNewest);
-    addProgressStat(exerciseProgressStats, best?.display || "—", "Best so far");
-    addProgressStat(exerciseProgressStats, latest.performance?.display || "—", "Latest");
-    addProgressStat(exerciseProgressStats, trend.label.replace(/[↑↓→]\s*/, ""), "Recent trend");
+    addProgressStat(exerciseProgressStats, best?.display || "—", "Best so far", best?.workout?.date ? formatDate(best.workout.date, true) : "Historical baseline");
+    addProgressStat(exerciseProgressStats, latest.performance?.display || "—", "Latest", formatDate(latest.workout.date, true));
+    addProgressStat(exerciseProgressStats, trend.label.replace(/[↑↓→]\s*/, ""), "Recent trend", previous ? `vs ${formatDate(previous.workout.date, true)}` : "Need another workout");
 
     const sessionsOldest = [...sessionsNewest].reverse().filter(s => s.performance?.metric === best?.metric).slice(-12);
     renderSparkline(exerciseProgressChart, sessionsOldest.map(s => s.performance.trendScore ?? s.performance.score));
@@ -1289,13 +1360,15 @@ function renderSelectedExerciseProgress() {
         const date = document.createElement("span");
         date.textContent = formatDate(session.workout.date, true);
         const result = document.createElement("span");
-        result.textContent = session.performance.display;
+        const isBest = best?.workout?.id === session.workout.id;
+        result.textContent = `${isBest ? "🏆 " : ""}${session.performance.display}`;
+        if (isBest) row.classList.add("current-best-row");
         row.append(date, result);
         exerciseProgressHistory.appendChild(row);
     });
 }
 
-function addProgressStat(container, value, label) {
+function addProgressStat(container, value, label, detail = "") {
     const stat = document.createElement("div");
     stat.className = "progress-stat";
     const strong = document.createElement("strong");
@@ -1303,6 +1376,11 @@ function addProgressStat(container, value, label) {
     const span = document.createElement("span");
     span.textContent = label;
     stat.append(strong, span);
+    if (detail) {
+        const small = document.createElement("small");
+        small.textContent = detail;
+        stat.appendChild(small);
+    }
     container.appendChild(stat);
 }
 
@@ -1594,6 +1672,23 @@ window.addEventListener("beforeunload", () => saveCurrentDraft());
 
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") saveCurrentDraft();
+});
+
+
+function setEditingFieldState(active) {
+    document.body.classList.toggle("editing-field", active);
+}
+
+document.addEventListener("focusin", event => {
+    if (event.target.matches("input, textarea, select")) setEditingFieldState(true);
+});
+
+document.addEventListener("focusout", event => {
+    if (!event.target.matches("input, textarea, select")) return;
+    setTimeout(() => {
+        const active = document.activeElement;
+        if (!active || !active.matches?.("input, textarea, select")) setEditingFieldState(false);
+    }, 80);
 });
 
 async function registerServiceWorker() {

@@ -1,5 +1,5 @@
-const CACHE_NAME = "workout-log-v4-1";
-const APP_SHELL = ["./", "./index.html", "./style.css", "./script.js"];
+const CACHE_NAME = "workout-log-v4-1-refined";
+const APP_SHELL = ["./", "./index.html", "./style.css", "./script.js", "./manifest.webmanifest", "./apple-touch-icon.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", event => {
     event.waitUntil(
