@@ -1,232 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#0d0d0f">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="Workout Log">
-    <title>Workout Log</title>
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0c10">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Workout Log">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <title>Workout Log</title>
 </head>
 <body>
 <div id="app">
-    <header class="top-bar">
-        <div>
-            <div class="top-label">MY TRAINING</div>
-            <h1>Workout Log</h1>
-        </div>
-        <div id="topSaveStatus" class="save-indicator">Saved</div>
-    </header>
-
-    <main id="logScreen" class="screen active-screen">
-        <section id="backupReminder" class="backup-reminder hidden">
-            <div>
-                <strong id="backupReminderTitle">Backup recommended</strong>
-                <p id="backupReminderText">Keep a recent copy in iCloud Drive.</p>
-            </div>
-            <button id="backupReminderButton" type="button">Back Up</button>
-        </section>
-
-        <section class="welcome-section">
-            <div class="section-label">TODAY'S WORKOUT</div>
-            <h2>What are we training?</h2>
-            <div class="workout-grid">
-                <button class="workout-choice" data-workout="Push Day" type="button"><span class="workout-emoji">🏋️</span><span>Push Day</span></button>
-                <button class="workout-choice" data-workout="Pull Day" type="button"><span class="workout-emoji">💪</span><span>Pull Day</span></button>
-                <button class="workout-choice" data-workout="Cardio + Abs" type="button"><span class="workout-emoji">🏃</span><span>Cardio + Abs</span></button>
-                <button class="workout-choice" data-workout="Legs Day" type="button"><span class="workout-emoji">🦵</span><span>Legs Day</span></button>
-            </div>
-        </section>
-
-        <section id="sessionArea" class="hidden">
-            <section class="session-heading">
-                <div>
-                    <div class="section-label">CURRENT SESSION</div>
-                    <h2 id="currentWorkoutTitle">Push Day</h2>
-                </div>
-                <div class="session-actions">
-                    <button id="repeatLastButton" class="mini-button" type="button">Repeat Last</button>
-                    <button id="newSessionButton" class="mini-button" type="button">New</button>
-                </div>
-            </section>
-
-            <section id="bestSoFarCard" class="app-card best-card">
-                <div class="card-heading-row">
-                    <div>
-                        <div class="section-label">AUTO-CALCULATED</div>
-                        <h3>🏆 Best So Far</h3>
-                    </div>
-                    <span class="small-muted">From saved history</span>
-                </div>
-                <div id="bestSoFarList" class="best-list"></div>
-            </section>
-
-            <section class="app-card">
-                <div class="two-column">
-                    <div>
-                        <label for="workoutDate">Date</label>
-                        <input id="workoutDate" type="date">
-                    </div>
-                    <div>
-                        <label for="bodyWeight">Body Weight</label>
-                        <input id="bodyWeight" type="number" step="0.1" placeholder="Optional">
-                    </div>
-                </div>
-                <label for="sessionLocation">Location</label>
-                <input id="sessionLocation" type="text" placeholder="NYU, Planet Fitness, Home...">
-                <label for="sessionNote">Before-workout note</label>
-                <textarea id="sessionNote" class="medium-textarea" placeholder="No straps today, gym packed, tired, trying something new..."></textarea>
-                <label class="pr-toggle-row session-pr-toggle">
-                    <input id="countWorkoutForPr" type="checkbox" checked>
-                    <span>Count this workout toward PRs and progress</span>
-                </label>
-            </section>
-
-            <section id="cardioSection" class="app-card hidden">
-                <div class="card-title">Cardio</div>
-                <label for="cardioType">Type</label>
-                <select id="cardioType">
-                    <option value="Treadmill">Treadmill</option>
-                    <option value="Outdoor Run">Outdoor Run</option>
-                    <option value="StairMaster">StairMaster</option>
-                    <option value="Other">Other</option>
-                </select>
-                <div class="metric-grid">
-                    <div><label for="calories">Calories</label><input id="calories" type="number" placeholder="313"></div>
-                    <div><label for="distance">Distance</label><input id="distance" type="number" step="0.01" placeholder="2.65 mi"></div>
-                    <div><label for="cardioTime">Time</label><input id="cardioTime" type="text" placeholder="30:28"></div>
-                    <div><label for="pace">Pace</label><input id="pace" type="text" placeholder="11:27"></div>
-                    <div><label for="speed">Speed</label><input id="speed" type="number" step="0.1" placeholder="5.2 mph"></div>
-                    <div><label for="feetClimbed">Feet Climbed</label><input id="feetClimbed" type="number" placeholder="0"></div>
-                    <div><label for="steps">Steps</label><input id="steps" type="number" placeholder="2174"></div>
-                    <div><label for="spm">SPM</label><input id="spm" type="number" placeholder="62"></div>
-                </div>
-                <label for="cardioNote">Cardio note</label>
-                <textarea id="cardioNote" class="medium-textarea" placeholder="How it felt, pacing, treadmill differences..."></textarea>
-            </section>
-
-            <div id="exerciseList"></div>
-            <button id="addExerciseButton" class="add-exercise-button" type="button">＋ Add Exercise</button>
-
-            <section class="app-card">
-                <label for="overallWorkoutNote">End-of-workout thoughts</label>
-                <textarea id="overallWorkoutNote" class="large-textarea" placeholder="How did the workout feel? What should change next time?"></textarea>
-            </section>
-            <div class="bottom-space"></div>
-        </section>
-    </main>
-
-    <main id="historyScreen" class="screen">
-        <div class="screen-heading">
-            <div class="section-label">TRAINING LOG</div>
-            <h2>Workout History</h2>
-        </div>
-        <div class="filter-scroll">
-            <button class="history-filter active-filter" data-filter="All" type="button">All</button>
-            <button class="history-filter" data-filter="Push Day" type="button">Push</button>
-            <button class="history-filter" data-filter="Pull Day" type="button">Pull</button>
-            <button class="history-filter" data-filter="Cardio + Abs" type="button">Cardio + Abs</button>
-            <button class="history-filter" data-filter="Legs Day" type="button">Legs</button>
-        </div>
-        <div id="historyList"></div>
-        <div class="bottom-space"></div>
-    </main>
-
-    <main id="progressScreen" class="screen">
-        <div class="screen-heading">
-            <div class="section-label">YOUR PROGRESS</div>
-            <h2>Progress</h2>
-        </div>
-
-        <div id="progressSummary" class="summary-grid"></div>
-
-        <section class="app-card">
-            <div class="card-heading-row">
-                <div>
-                    <div class="section-label">BODY WEIGHT</div>
-                    <h3>Weight Trend</h3>
-                </div>
-                <span id="weightTrendLabel" class="trend-chip neutral">No data</span>
-            </div>
-            <div id="weightStats" class="progress-stats"></div>
-            <div id="weightChart" class="chart-wrap"></div>
-        </section>
-
-        <section class="app-card">
-            <div class="section-label">EXERCISE PROGRESS</div>
-            <h3>Track an Exercise</h3>
-            <label for="progressExerciseSelect">Exercise</label>
-            <select id="progressExerciseSelect"></select>
-            <div id="exerciseProgressStats" class="progress-stats"></div>
-            <div id="exerciseProgressChart" class="chart-wrap"></div>
-            <div id="exerciseProgressHistory" class="mini-history"></div>
-        </section>
-
-        <div class="bottom-space"></div>
-    </main>
-
-    <main id="backupScreen" class="screen">
-        <div class="screen-heading">
-            <div class="section-label">YOUR DATA</div>
-            <h2>Backup & Export</h2>
-        </div>
-
-        <section id="backupStatusCard" class="backup-status-card">
-            <div class="backup-icon">☁️</div>
-            <div class="grow">
-                <strong>Keep a second copy</strong>
-                <p id="backupStatusText">No backup exported yet.</p>
-            </div>
-        </section>
-
-        <section class="app-card">
-            <h3>Full Backup</h3>
-            <p class="help-text">Saves every workout, draft, and app setting in one JSON file. Keep it in iCloud Drive.</p>
-            <button id="exportBackupButton" class="primary-action" type="button">Export Full Backup</button>
-            <button id="mergeBackupButton" class="secondary-action" type="button">Merge From Backup</button>
-            <button id="importBackupButton" class="danger-outline-action" type="button">Replace All From Backup</button>
-            <input id="importBackupInput" class="hidden" type="file" accept=".json,application/json">
-            <button id="undoRestoreButton" class="secondary-action hidden" type="button">Undo Last Restore / Merge</button>
-        </section>
-
-        <section class="app-card">
-            <h3>Recent Backup Exports</h3>
-            <div id="backupHistoryList" class="backup-history-list"></div>
-        </section>
-
-        <section class="app-card">
-            <h3>AI / Notes Export</h3>
-            <p class="help-text">Creates a readable text file containing all workout history.</p>
-            <button id="exportTextButton" class="secondary-action" type="button">Export Workout History</button>
-            <button id="exportCsvButton" class="secondary-action" type="button">Export CSV</button>
-        </section>
-
-        <section class="app-card info-card">
-            <h3>How your data works</h3>
-            <p>Your workout data still stays on this device. The website itself does not upload your workout history anywhere.</p>
-            <p>The app now works much better offline after it has loaded once, but a JSON backup in iCloud Drive is still your protection if your phone is lost, replaced, or Safari data is cleared.</p>
-        </section>
-        <div class="bottom-space"></div>
-    </main>
-
-    <div id="saveDock" class="save-dock hidden">
-        <button id="saveWorkoutButton" type="button">Save Workout</button>
+  <header class="top-bar">
+    <div>
+      <div class="top-label">MY TRAINING</div>
+      <h1>Workout Log</h1>
     </div>
+    <div id="topSaveStatus" class="save-indicator">Saved</div>
+  </header>
 
-    <nav class="bottom-nav">
-        <button class="nav-button active-nav" data-screen="log" type="button"><span class="nav-icon">＋</span><span>Log</span></button>
-        <button class="nav-button" data-screen="history" type="button"><span class="nav-icon">◷</span><span>History</span></button>
-        <button class="nav-button" data-screen="progress" type="button"><span class="nav-icon">↗</span><span>Progress</span></button>
-        <button class="nav-button" data-screen="backup" type="button"><span class="nav-icon">⇩</span><span>Backup</span></button>
-    </nav>
+  <main id="logScreen" class="screen active-screen">
+    <section id="backupReminder" class="banner hidden">
+      <div><strong id="backupReminderTitle">Backup recommended</strong><p id="backupReminderText"></p></div>
+      <button id="backupReminderButton" type="button">Back Up</button>
+    </section>
 
-    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+    <section class="welcome-section">
+      <div class="section-label">WORKOUTS</div>
+      <div class="heading-row">
+        <h2>What are we training?</h2>
+        <button id="manageWorkoutsButton" class="text-button" type="button">Manage</button>
+      </div>
+      <div id="workoutGrid" class="workout-grid"></div>
+      <button id="newWorkoutButton" class="add-workout-button" type="button">＋ New Workout</button>
+    </section>
+
+    <section id="sessionArea" class="hidden">
+      <section class="session-heading">
+        <div>
+          <div class="section-label">CURRENT SESSION</div>
+          <h2 id="currentWorkoutTitle"></h2>
+        </div>
+        <div class="session-actions">
+          <button id="repeatLastButton" class="mini-button" type="button">Repeat Last</button>
+          <button id="newSessionButton" class="mini-button" type="button">New</button>
+        </div>
+      </section>
+
+      <div id="exerciseJumpNav" class="exercise-jump-nav"></div>
+
+      <section id="bestSoFarCard" class="app-card best-card">
+        <div class="card-heading-row">
+          <div><div class="section-label">LOCATION-AWARE</div><h3>🏆 Best So Far</h3></div>
+          <span id="bestLocationLabel" class="small-muted">Set a gym location</span>
+        </div>
+        <div id="bestSoFarList" class="best-list"></div>
+      </section>
+
+      <section class="app-card">
+        <div class="two-column">
+          <div><label for="workoutDate">Date</label><input id="workoutDate" type="date"></div>
+          <div><label for="bodyWeight">Body Weight</label><input id="bodyWeight" type="number" step="0.1" placeholder="Optional"></div>
+        </div>
+        <label for="sessionLocation">Gym / Location</label>
+        <input id="sessionLocation" type="text" placeholder="e.g. NYU">
+        <div id="recentLocationChips" class="chip-row"></div>
+        <label for="sessionNote">Before-workout note</label>
+        <textarea id="sessionNote" class="medium-textarea" placeholder="Energy, equipment, anything different today..."></textarea>
+        <label class="toggle-row"><input id="countWorkoutForPr" type="checkbox" checked><span>Count this workout toward PRs and progress</span></label>
+      </section>
+
+      <section id="cardioSection" class="app-card hidden">
+        <div class="card-title">Cardio</div>
+        <label for="cardioType">Type</label>
+        <select id="cardioType">
+          <option>Treadmill</option><option>Outdoor Run</option><option>StairMaster</option><option>Bike</option><option>Other</option>
+        </select>
+        <div class="metric-grid">
+          <div><label for="calories">Calories</label><input id="calories" type="number"></div>
+          <div><label for="distance">Distance (mi)</label><input id="distance" type="number" step="0.01"></div>
+          <div><label for="cardioTime">Time</label><input id="cardioTime" type="text" placeholder="30:28"></div>
+          <div><label for="pace">Pace</label><input id="pace" type="text" placeholder="11:27"></div>
+          <div><label for="speed">Speed (mph)</label><input id="speed" type="number" step="0.1"></div>
+          <div><label for="feetClimbed">Feet Climbed</label><input id="feetClimbed" type="number"></div>
+          <div><label for="steps">Steps</label><input id="steps" type="number"></div>
+          <div><label for="spm">SPM</label><input id="spm" type="number"></div>
+        </div>
+        <label for="cardioNote">Cardio note</label>
+        <textarea id="cardioNote" class="medium-textarea"></textarea>
+      </section>
+
+      <div id="exerciseList"></div>
+      <button id="addExerciseButton" class="add-exercise-button" type="button">＋ Add Exercise to This Session</button>
+
+      <section class="app-card">
+        <label for="overallWorkoutNote">End-of-workout thoughts</label>
+        <textarea id="overallWorkoutNote" class="large-textarea" placeholder="How did it feel? What should change next time?"></textarea>
+      </section>
+      <div class="bottom-space"></div>
+    </section>
+  </main>
+
+  <main id="historyScreen" class="screen">
+    <div class="screen-heading"><div class="section-label">TRAINING LOG</div><h2>Workout History</h2></div>
+    <div id="historyFilters" class="filter-scroll"></div>
+    <div id="historyList"></div>
+    <div class="bottom-space"></div>
+  </main>
+
+  <main id="progressScreen" class="screen">
+    <div class="screen-heading"><div class="section-label">YOUR PROGRESS</div><h2>Progress</h2></div>
+    <div id="progressSummary" class="summary-grid"></div>
+
+    <section class="app-card">
+      <div class="card-heading-row"><div><div class="section-label">BODY WEIGHT</div><h3>Weight Trend</h3></div><span id="weightTrendLabel" class="trend-chip neutral">No data</span></div>
+      <div id="weightStats" class="progress-stats"></div>
+      <div id="weightChart" class="chart-wrap"></div>
+    </section>
+
+    <section class="app-card">
+      <div class="section-label">EXERCISE PROGRESS</div>
+      <h3>Track an Exercise</h3>
+      <label for="progressExerciseSelect">Exercise</label>
+      <select id="progressExerciseSelect"></select>
+      <label for="progressLocationSelect">Gym / Location</label>
+      <select id="progressLocationSelect"></select>
+      <div id="exerciseProgressStats" class="progress-stats"></div>
+      <div id="exerciseProgressChart" class="chart-wrap"></div>
+      <div id="exerciseProgressHistory" class="mini-history"></div>
+    </section>
+    <div class="bottom-space"></div>
+  </main>
+
+  <main id="backupScreen" class="screen">
+    <div class="screen-heading"><div class="section-label">YOUR DATA</div><h2>Backup & Export</h2></div>
+    <section id="backupStatusCard" class="backup-status-card">
+      <div class="backup-icon">☁️</div><div class="grow"><strong>Keep a second copy</strong><p id="backupStatusText"></p></div>
+    </section>
+    <section class="app-card">
+      <h3>Full Backup</h3>
+      <p class="help-text">Includes workouts, workout templates, exercise library, drafts, and settings.</p>
+      <button id="exportBackupButton" class="primary-action" type="button">Export Full Backup</button>
+      <button id="mergeBackupButton" class="secondary-action" type="button">Merge From Backup</button>
+      <button id="importBackupButton" class="danger-outline-action" type="button">Replace All From Backup</button>
+      <input id="importBackupInput" class="hidden" type="file" accept=".json,application/json">
+      <button id="undoRestoreButton" class="secondary-action hidden" type="button">Undo Last Restore / Merge</button>
+    </section>
+    <section class="app-card">
+      <h3>Exports</h3>
+      <button id="exportTextButton" class="secondary-action" type="button">Export Readable History</button>
+      <button id="exportCsvButton" class="secondary-action" type="button">Export CSV</button>
+    </section>
+    <section class="app-card info-card">
+      <h3>Cloud Sync</h3>
+      <p>Not enabled yet. Your data stays on this device unless you export a backup. Cloud accounts can be added later if you decide to publish the app.</p>
+    </section>
+    <div class="bottom-space"></div>
+  </main>
+
+  <div id="saveDock" class="save-dock hidden"><button id="saveWorkoutButton" type="button">Save Workout</button></div>
+
+  <nav class="bottom-nav">
+    <button class="nav-button active-nav" data-screen="log" type="button"><span class="nav-icon">＋</span><span>Log</span></button>
+    <button class="nav-button" data-screen="history" type="button"><span class="nav-icon">◷</span><span>History</span></button>
+    <button class="nav-button" data-screen="progress" type="button"><span class="nav-icon">↗</span><span>Progress</span></button>
+    <button class="nav-button" data-screen="backup" type="button"><span class="nav-icon">⇩</span><span>Backup</span></button>
+  </nav>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <div id="modalOverlay" class="modal-overlay hidden" aria-hidden="true">
+    <section id="modalCard" class="modal-card"></section>
+  </div>
 </div>
 <script src="script.js"></script>
 </body>
