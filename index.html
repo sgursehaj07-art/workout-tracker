@@ -33,7 +33,7 @@
       <div class="section-label">WORKOUTS</div>
       <div class="heading-row">
         <h2>What are we training?</h2>
-        <button id="manageWorkoutsButton" class="text-button" type="button">Manage</button>
+        <button id="manageWorkoutsButton" class="text-button" type="button">Edit Workouts</button>
       </div>
       <div id="workoutGrid" class="workout-grid"></div>
       <button id="newWorkoutButton" class="add-workout-button" type="button">＋ New Workout</button>
@@ -46,6 +46,7 @@
           <h2 id="currentWorkoutTitle"></h2>
         </div>
         <div class="session-actions">
+          <button id="editWorkoutExercisesButton" class="mini-button" type="button">Edit Exercises</button>
           <button id="repeatLastButton" class="mini-button" type="button">Repeat Last</button>
           <button id="newSessionButton" class="mini-button" type="button">New</button>
         </div>
@@ -66,9 +67,13 @@
           <div><label for="workoutDate">Date</label><input id="workoutDate" type="date"></div>
           <div><label for="bodyWeight">Body Weight</label><input id="bodyWeight" type="number" step="0.1" placeholder="Optional"></div>
         </div>
-        <label for="sessionLocation">Gym / Location</label>
-        <input id="sessionLocation" type="text" placeholder="e.g. NYU">
+        <div class="label-action-row">
+          <label for="sessionLocation">Gym / Location</label>
+          <button id="manageLocationsButton" class="inline-manage-button" type="button">Manage Locations</button>
+        </div>
+        <input id="sessionLocation" type="text" placeholder="Choose or type a gym — e.g. NYU">
         <div id="recentLocationChips" class="chip-row"></div>
+        <p class="location-help">Each saved location keeps its own PRs and set suggestions.</p>
         <label for="sessionNote">Before-workout note</label>
         <textarea id="sessionNote" class="medium-textarea" placeholder="Energy, equipment, anything different today..."></textarea>
         <label class="toggle-row"><input id="countWorkoutForPr" type="checkbox" checked><span>Count this workout toward PRs and progress</span></label>

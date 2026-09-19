@@ -1,4 +1,4 @@
-const CACHE_NAME = "workout-log-v5-final-2026-09-18";
+const CACHE_NAME = "workout-log-v5-fix-2026-09-18a";
 const CACHE_PREFIX = "workout-log-";
 const APP_SHELL = [
   "./",

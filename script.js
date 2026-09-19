@@ -26,9 +26,9 @@ const $ = id => document.getElementById(id);
 const logScreen = $("logScreen"), historyScreen = $("historyScreen"), progressScreen = $("progressScreen"), backupScreen = $("backupScreen");
 const navButtons = document.querySelectorAll(".nav-button");
 const workoutGrid = $("workoutGrid"), manageWorkoutsButton = $("manageWorkoutsButton"), newWorkoutButton = $("newWorkoutButton");
-const sessionArea = $("sessionArea"), currentWorkoutTitle = $("currentWorkoutTitle"), exerciseJumpNav = $("exerciseJumpNav");
+const sessionArea = $("sessionArea"), currentWorkoutTitle = $("currentWorkoutTitle"), exerciseJumpNav = $("exerciseJumpNav"), editWorkoutExercisesButton = $("editWorkoutExercisesButton");
 const bestSoFarList = $("bestSoFarList"), bestLocationLabel = $("bestLocationLabel");
-const workoutDate = $("workoutDate"), bodyWeight = $("bodyWeight"), sessionLocation = $("sessionLocation"), recentLocationChips = $("recentLocationChips");
+const workoutDate = $("workoutDate"), bodyWeight = $("bodyWeight"), sessionLocation = $("sessionLocation"), recentLocationChips = $("recentLocationChips"), manageLocationsButton = $("manageLocationsButton");
 const sessionNote = $("sessionNote"), overallWorkoutNote = $("overallWorkoutNote"), countWorkoutForPr = $("countWorkoutForPr");
 const cardioSection = $("cardioSection"), cardioType = $("cardioType"), calories = $("calories"), distance = $("distance"), cardioTime = $("cardioTime"), pace = $("pace"), speed = $("speed"), feetClimbed = $("feetClimbed"), steps = $("steps"), spm = $("spm"), cardioNote = $("cardioNote");
 const exerciseList = $("exerciseList"), addExerciseButton = $("addExerciseButton"), newSessionButton = $("newSessionButton"), repeatLastButton = $("repeatLastButton"), saveWorkoutButton = $("saveWorkoutButton"), saveDock = $("saveDock"), topSaveStatus = $("topSaveStatus");
@@ -58,6 +58,17 @@ function normText(v) { return String(v||"").trim().replace(/\s+/g," "); }
 function locationKey(v) { return normText(v).toLowerCase(); }
 function sameLocation(a,b) { return locationKey(a)===locationKey(b); }
 function emptySet(){ return {entry:"",note:""}; }
+function uniqueLocationNames(values){
+  const seen=new Set(),out=[];
+  (values||[]).forEach(value=>{const name=normText(value),key=locationKey(name);if(!key||seen.has(key))return;seen.add(key);out.push(name);});
+  return out;
+}
+function historicalLocationNames(data){
+  const values=[];
+  (data?.workouts||[]).forEach(w=>values.push(w?.location));
+  Object.values(data?.drafts||{}).forEach(d=>values.push(d?.location));
+  return uniqueLocationNames(values);
+}
 
 function defaultLibrary() {
   const names=[]; DEFAULT_TEMPLATES.forEach(t=>t.exercises.forEach(n=>{ if(!names.includes(n)) names.push(n); }));
@@ -69,7 +80,7 @@ function defaultTemplates(library) {
 }
 function findExerciseByNameIn(library,name){ const k=normText(name).toLowerCase(); return library.find(e=>normText(e.name).toLowerCase()===k) || null; }
 
-function blankAppData(){ const exerciseLibrary=defaultLibrary(); return {version:APP_VERSION,workouts:[],templates:defaultTemplates(exerciseLibrary),exerciseLibrary,drafts:{},lastBackupAt:null,lastBackupWorkoutCount:0,backupHistory:[],settings:{locationNames:{}}}; }
+function blankAppData(){ const exerciseLibrary=defaultLibrary(); return {version:APP_VERSION,workouts:[],templates:defaultTemplates(exerciseLibrary),exerciseLibrary,drafts:{},lastBackupAt:null,lastBackupWorkoutCount:0,backupHistory:[],settings:{locationNames:{},locations:[],activeLocation:""}}; }
 
 function normalizeAppData(data){
   const base=blankAppData();
@@ -100,8 +111,12 @@ function normalizeAppData(data){
   out.lastBackupAt=data?.lastBackupAt||null;
   out.lastBackupWorkoutCount=Number.isFinite(Number(data?.lastBackupWorkoutCount))?Number(data.lastBackupWorkoutCount):(out.lastBackupAt?out.workouts.length:0);
   out.backupHistory=Array.isArray(data?.backupHistory)?data.backupHistory.slice(0,12):[];
-  out.settings=data?.settings&&typeof data.settings==="object"?data.settings:{locationNames:{}};
-  if(!out.settings.locationNames) out.settings.locationNames={};
+  const incomingSettings=data?.settings&&typeof data.settings==="object"?data.settings:{};
+  const hadManagedLocations=Array.isArray(incomingSettings.locations);
+  out.settings={...incomingSettings,locationNames:incomingSettings.locationNames&&typeof incomingSettings.locationNames==="object"?incomingSettings.locationNames:{}};
+  out.settings.locations=hadManagedLocations?uniqueLocationNames(incomingSettings.locations):historicalLocationNames(out);
+  const active=normText(incomingSettings.activeLocation);
+  out.settings.activeLocation=active&&out.settings.locations.some(loc=>sameLocation(loc,active))?out.settings.locations.find(loc=>sameLocation(loc,active)):out.settings.locations[0]||"";
   migrateWorkoutTemplateIds(out);
   return out;
 }
@@ -124,7 +139,7 @@ function currentTemplate(){ return appData.templates.find(t=>t.id===currentTempl
 function templateByName(name){ return appData.templates.find(t=>t.name.toLowerCase()===String(name||"").toLowerCase())||null; }
 
 function freshDraft(template){
-  return {templateId:template.id,workoutType:template.name,date:todayValue(),bodyWeight:"",location:recentLocations()[0]||"",sessionNote:"",overallWorkoutNote:"",excludeFromPR:false,cardio:{type:"Treadmill",calories:"",distance:"",time:"",pace:"",speed:"",feetClimbed:"",steps:"",spm:"",note:""},exercises:template.exerciseIds.map(id=>{const e=getExercise(id); return {exerciseId:id,name:e?.name||"Exercise",note:"",excludeFromPR:false,sets:[emptySet()]};}),existingWorkoutId:null,savedAt:null};
+  return {templateId:template.id,workoutType:template.name,date:todayValue(),bodyWeight:"",location:preferredLocation(),sessionNote:"",overallWorkoutNote:"",excludeFromPR:false,cardio:{type:"Treadmill",calories:"",distance:"",time:"",pace:"",speed:"",feetClimbed:"",steps:"",spm:"",note:""},exercises:template.exerciseIds.map(id=>{const e=getExercise(id); return {exerciseId:id,name:e?.name||"Exercise",note:"",excludeFromPR:false,sets:[emptySet()]};}),existingWorkoutId:null,savedAt:null};
 }
 function normalizeDraft(template,stored){
   if(!stored) return freshDraft(template);
@@ -143,6 +158,7 @@ function normalizeExerciseRecord(ex){
   return {exerciseId:lib.id,name:normText(ex?.name)||lib.name,note:ex?.note||"",excludeFromPR:Boolean(ex?.excludeFromPR),sets:Array.isArray(ex?.sets)&&ex.sets.length?ex.sets.map(s=>({entry:s?.entry||"",note:s?.note||""})):[emptySet()]};
 }
 function draftHasData(d){ return Boolean(d&&(d.bodyWeight||d.sessionNote||d.overallWorkoutNote||Object.entries(d.cardio||{}).some(([k,v])=>k!=="type"&&normText(v))||(d.exercises||[]).some(ex=>ex.note||(ex.sets||[]).some(s=>normText(s.entry)||normText(s.note))))); }
+function draftHasLoggedTrainingData(d){ return Boolean(d&&(d.existingWorkoutId||d.sessionNote||d.overallWorkoutNote||Object.entries(d.cardio||{}).some(([k,v])=>k!=="type"&&normText(v))||(d.exercises||[]).some(ex=>ex.note||(ex.sets||[]).some(s=>normText(s.entry)||normText(s.note))))); }
 
 function showScreen(name){
   [logScreen,historyScreen,progressScreen,backupScreen].forEach(s=>s.classList.remove("active-screen"));
@@ -239,12 +255,35 @@ function renderExerciseJumpNav(){
 function updateJumpState(){ [...exerciseJumpNav.querySelectorAll(".jump-chip")].forEach(b=>{const card=$(b.dataset.target); const filled=card&&[...card.querySelectorAll(".set-entry")].some(i=>normText(i.value)); b.classList.toggle("done",Boolean(filled)); if(filled&&!b.textContent.startsWith("✓ "))b.textContent=`✓ ${b.textContent}`; if(!filled&&b.textContent.startsWith("✓ "))b.textContent=b.textContent.slice(2);}); }
 
 function recentLocations(){
-  const seen=new Set(),arr=[]; sortNewest(appData.workouts).forEach(w=>{const k=locationKey(w.location);if(k&&!seen.has(k)){seen.add(k);arr.push(normText(w.location));}}); return arr.slice(0,8);
+  const seen=new Set(),arr=[]; sortNewest(appData.workouts).forEach(w=>{const k=locationKey(w.location);if(k&&!seen.has(k)){seen.add(k);arr.push(normText(w.location));}}); return arr.slice(0,12);
+}
+function managedLocations(){ return uniqueLocationNames(appData.settings?.locations||[]); }
+function canonicalManagedLocation(value){ const key=locationKey(value); return managedLocations().find(loc=>locationKey(loc)===key)||""; }
+function knownLocationName(value){ const key=locationKey(value); return uniqueLocationNames([...managedLocations(),...historicalLocationNames(appData)]).find(loc=>locationKey(loc)===key)||""; }
+function preferredLocation(){
+  const active=canonicalManagedLocation(appData.settings?.activeLocation);
+  return active||managedLocations()[0]||"";
+}
+function ensureManagedLocation(value){
+  const name=normText(value);if(!name)return "";
+  const existing=canonicalManagedLocation(name);if(existing)return existing;
+  const canonical=knownLocationName(name)||name;
+  if(!appData.settings)appData.settings={};
+  appData.settings.locations=uniqueLocationNames([...(appData.settings.locations||[]),canonical]);
+  return canonical;
+}
+function setActiveLocation(value){
+  const canonical=canonicalManagedLocation(value)||normText(value);
+  if(!canonical)return;
+  if(!appData.settings)appData.settings={};
+  appData.settings.activeLocation=canonical;
 }
 function renderLocationChips(){
-  recentLocationChips.innerHTML=""; recentLocations().slice(0,5).forEach(loc=>{const b=document.createElement("button");b.type="button";b.className="location-chip"+(sameLocation(loc,sessionLocation.value)?" active":"");b.textContent=loc;b.addEventListener("click",()=>{sessionLocation.value=loc;sessionLocation.dispatchEvent(new Event("input",{bubbles:true}));});recentLocationChips.appendChild(b);});
+  recentLocationChips.innerHTML="";
+  managedLocations().forEach(loc=>{const b=document.createElement("button");b.type="button";b.className="location-chip"+(sameLocation(loc,sessionLocation.value)?" active":"");b.textContent=loc;b.addEventListener("click",()=>{sessionLocation.value=loc;setActiveLocation(loc);saveAppData();sessionLocation.dispatchEvent(new Event("input",{bubbles:true}));});recentLocationChips.appendChild(b);});
 }
 sessionLocation.addEventListener("input",()=>{queueAutosave();renderLocationChips();renderBestSoFar();refreshAllInsightsAndSuggestions();});
+sessionLocation.addEventListener("change",()=>{const canonical=canonicalManagedLocation(sessionLocation.value);if(canonical){sessionLocation.value=canonical;setActiveLocation(canonical);saveAppData();renderLocationChips();}});
 
 function filledSets(ex){ return (ex?.sets||[]).filter(s=>normText(s.entry)); }
 function exerciseIdentityMatches(ex,exerciseId,name){ if(exerciseId&&ex?.exerciseId===exerciseId)return true; return normText(ex?.name).toLowerCase()===normText(name).toLowerCase(); }
@@ -436,7 +475,8 @@ function collectDraft(){
     excludeFromPR:!(card.querySelector(".pr-toggle")?.checked??true),
     sets:[...card.querySelectorAll(".set-card")].map(sc=>({entry:normText(sc.querySelector(".set-entry")?.value),note:normText(sc.querySelector(".set-note")?.value)}))
   }));
-  return {...currentDraft,templateId:currentTemplateId,workoutType:currentTemplate()?.name||currentWorkoutType,date:workoutDate.value||todayValue(),bodyWeight:normText(bodyWeight.value),location:normText(sessionLocation.value),sessionNote:normText(sessionNote.value),overallWorkoutNote:normText(overallWorkoutNote.value),excludeFromPR:!countWorkoutForPr.checked,cardio:{type:cardioType.value||"Treadmill",calories:normText(calories.value),distance:normText(distance.value),time:normText(cardioTime.value),pace:normText(pace.value),speed:normText(speed.value),feetClimbed:normText(feetClimbed.value),steps:normText(steps.value),spm:normText(spm.value),note:normText(cardioNote.value)},exercises};
+  const rawLocation=normText(sessionLocation.value),canonicalLocation=canonicalManagedLocation(rawLocation)||rawLocation;
+  return {...currentDraft,templateId:currentTemplateId,workoutType:currentTemplate()?.name||currentWorkoutType,date:workoutDate.value||todayValue(),bodyWeight:normText(bodyWeight.value),location:canonicalLocation,sessionNote:normText(sessionNote.value),overallWorkoutNote:normText(overallWorkoutNote.value),excludeFromPR:!countWorkoutForPr.checked,cardio:{type:cardioType.value||"Treadmill",calories:normText(calories.value),distance:normText(distance.value),time:normText(cardioTime.value),pace:normText(pace.value),speed:normText(speed.value),feetClimbed:normText(feetClimbed.value),steps:normText(steps.value),spm:normText(spm.value),note:normText(cardioNote.value)},exercises};
 }
 function saveCurrentDraft(){if(!currentTemplateId||!currentDraft)return;const d=collectDraft();if(!d)return;currentDraft=d;appData.drafts[currentTemplateId]=d;saveAppData();}
 function queueAutosave(){topSaveStatus.textContent=navigator.onLine?"Saving…":"Offline · saving";clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>{saveCurrentDraft();topSaveStatus.textContent=navigator.onLine?"Saved":"Offline · saved";},250);}
@@ -481,6 +521,52 @@ function openAddExerciseModal(){openModal(card=>{
 });}
 addExerciseButton.addEventListener("click",openAddExerciseModal);
 
+function renameLocationEverywhere(oldName,newName){
+  const oldKey=locationKey(oldName),next=normText(newName);if(!oldKey||!next)return false;
+  const conflict=uniqueLocationNames([...managedLocations(),...historicalLocationNames(appData)]).find(loc=>locationKey(loc)===locationKey(next)&&locationKey(loc)!==oldKey);
+  if(conflict){showToast(`${conflict} is already a saved location.`);return false;}
+  appData.settings.locations=uniqueLocationNames((appData.settings.locations||[]).map(loc=>locationKey(loc)===oldKey?next:loc));
+  appData.workouts.forEach(w=>{
+    if(sameLocation(w.location,oldName))w.location=next;
+    (w.achievedPRs||[]).forEach(pr=>{if(sameLocation(pr.location,oldName))pr.location=next;});
+  });
+  Object.values(appData.drafts||{}).forEach(d=>{if(sameLocation(d?.location,oldName))d.location=next;});
+  if(sameLocation(appData.settings.activeLocation,oldName))appData.settings.activeLocation=next;
+  if(currentDraft&&sameLocation(currentDraft.location,oldName))currentDraft.location=next;
+  if(sameLocation(sessionLocation.value,oldName))sessionLocation.value=next;
+  saveAppData();renderLocationChips();renderBestSoFar();refreshAllInsightsAndSuggestions();renderHistory();renderProgress();
+  return true;
+}
+function openRenameLocationModal(oldName){openModal(card=>{
+  modalTitle(card,`Rename ${oldName}`,"Renaming updates the location on saved workouts too, so that gym's PR history stays together.");
+  const field=makeField("Location name","text",oldName,"e.g. Blink Fitness");card.appendChild(field.wrap);
+  modalActions(card,()=>{const next=normText(field.input.value);if(!next)return showToast("Location name cannot be blank.");if(renameLocationEverywhere(oldName,next)){openManageLocationsModal();showToast(`Location renamed to ${next}.`);}},"Rename");
+});}
+function openManageLocationsModal(){openModal(card=>{
+  modalTitle(card,"Manage Gym Locations","Add every gym you train at. PRs and smart set suggestions stay separate for each location. Removing a gym from this list never deletes its old workouts or PRs.");
+  const addField=makeField("Add a gym / location","text","","e.g. Blink Fitness");card.appendChild(addField.wrap);
+  const addButton=document.createElement("button");addButton.type="button";addButton.className="secondary-action";addButton.textContent="＋ Add Location";card.appendChild(addButton);
+  const h=document.createElement("h3");h.textContent="Saved Locations";card.appendChild(h);
+  const list=document.createElement("div");list.className="location-manager-list";card.appendChild(list);
+  const render=()=>{
+    list.innerHTML="";const locations=managedLocations();
+    if(!locations.length){const empty=document.createElement("div");empty.className="location-empty";empty.textContent="No saved locations yet.";list.appendChild(empty);return;}
+    locations.forEach(loc=>{
+      const row=document.createElement("div");row.className="location-manager-row";const name=document.createElement("strong");name.textContent=loc;
+      const actions=document.createElement("div");actions.className="row-actions";
+      const use=document.createElement("button");use.type="button";use.textContent=sameLocation(sessionLocation.value,loc)?"Selected":"Use";use.disabled=sameLocation(sessionLocation.value,loc);use.addEventListener("click",()=>{sessionLocation.value=loc;if(currentDraft)currentDraft.location=loc;setActiveLocation(loc);saveAppData();closeModal();sessionLocation.dispatchEvent(new Event("input",{bubbles:true}));showToast(`${loc} selected.`);});
+      const edit=document.createElement("button");edit.type="button";edit.textContent="Edit";edit.addEventListener("click",()=>openRenameLocationModal(loc));
+      const remove=document.createElement("button");remove.type="button";remove.className="danger";remove.textContent="Remove";remove.addEventListener("click",()=>{if(!confirm(`Remove ${loc} from your saved location choices? Past workouts and PRs at ${loc} will stay.`))return;appData.settings.locations=(appData.settings.locations||[]).filter(x=>!sameLocation(x,loc));if(sameLocation(appData.settings.activeLocation,loc))appData.settings.activeLocation=managedLocations()[0]||"";saveAppData();render();renderLocationChips();showToast(`${loc} removed from saved choices. History kept.`);});
+      actions.append(use,edit,remove);row.append(name,actions);list.appendChild(row);
+    });
+  };
+  addButton.addEventListener("click",()=>{const raw=normText(addField.input.value);if(!raw)return showToast("Enter a location name first.");const existing=canonicalManagedLocation(raw);const loc=existing||ensureManagedLocation(raw);setActiveLocation(loc);if(currentTemplateId){sessionLocation.value=loc;if(currentDraft)currentDraft.location=loc;}saveAppData();addField.input.value="";render();renderLocationChips();renderBestSoFar();refreshAllInsightsAndSuggestions();showToast(existing?`${existing} is already saved and selected.`:`${loc} added and selected.`);});
+  render();
+  const done=document.createElement("button");done.type="button";done.className="secondary-action";done.textContent="Done";done.addEventListener("click",closeModal);card.appendChild(done);
+});}
+manageLocationsButton?.addEventListener("click",()=>{saveCurrentDraft();openManageLocationsModal();});
+editWorkoutExercisesButton?.addEventListener("click",()=>{saveCurrentDraft();if(currentTemplateId)openTemplateEditor(currentTemplateId);});
+
 function openNewWorkoutModal(){openModal(card=>{
   modalTitle(card,"New Workout","Create a reusable workout template. You can change its exercises any time without losing old history.");
   const name=makeField("Workout name","text","","e.g. Upper Body"),emoji=makeField("Emoji","text","🏋️","🏋️"),cardioToggle=document.createElement("label");cardioToggle.className="toggle-row";cardioToggle.innerHTML='<input type="checkbox"><span>Include cardio tracking fields</span>';card.append(name.wrap,emoji.wrap,cardioToggle);
@@ -491,22 +577,25 @@ function openNewWorkoutModal(){openModal(card=>{
 newWorkoutButton.addEventListener("click",openNewWorkoutModal);
 
 function openTemplateEditor(templateId){const t=appData.templates.find(x=>x.id===templateId);if(!t)return;openModal(card=>{
-  modalTitle(card,`Edit ${t.name}`,"Reorder, add, or remove exercises. Historical workouts and PRs stay attached to each exercise.");
+  modalTitle(card,`Edit ${t.name}`,"Add, remove, or reorder exercises for future workouts. Saved workout history and PRs are never deleted when you change this list.");
   const name=makeField("Workout name","text",t.name),emoji=makeField("Emoji","text",t.emoji||"🏋️");const cardioToggle=document.createElement("label");cardioToggle.className="toggle-row";cardioToggle.innerHTML=`<input type="checkbox" ${t.cardio?"checked":""}><span>Include cardio tracking fields</span>`;card.append(name.wrap,emoji.wrap,cardioToggle);
-  const list=document.createElement("div");list.className="reorder-list";card.appendChild(list);let ids=[...t.exerciseIds];
-  const renderList=()=>{list.innerHTML="";ids.forEach((id,i)=>{const e=getExercise(id);if(!e)return;const row=document.createElement("div");row.className="reorder-item";const grip=document.createElement("span");grip.textContent="↕";const label=document.createElement("span");label.textContent=e.name;const up=iconButton("↑","Move up"),down=iconButton("↓","Move down"),rem=iconButton("×","Remove");rem.classList.add("remove");up.addEventListener("click",()=>{if(i<1)return;[ids[i-1],ids[i]]=[ids[i],ids[i-1]];renderList();});down.addEventListener("click",()=>{if(i>=ids.length-1)return;[ids[i+1],ids[i]]=[ids[i],ids[i+1]];renderList();});rem.addEventListener("click",()=>{ids.splice(i,1);renderList();renderPicker();});row.append(grip,label,up,down,rem);list.appendChild(row);});};renderList();
-  const addH=document.createElement("h3");addH.textContent="Add Exercise";card.appendChild(addH);const picker=document.createElement("div");picker.className="exercise-picker";card.appendChild(picker);const renderPicker=()=>{picker.innerHTML="";appData.exerciseLibrary.filter(e=>!ids.includes(e.id)).sort((a,b)=>a.name.localeCompare(b.name)).forEach(e=>{const b=document.createElement("button");b.type="button";b.className="library-chip";b.textContent=e.name;b.addEventListener("click",()=>{ids.push(e.id);renderList();renderPicker();});picker.appendChild(b);});};renderPicker();
+  const currentH=document.createElement("h3");currentH.textContent="Exercises in This Workout";card.appendChild(currentH);
+  const list=document.createElement("div");list.className="reorder-list";card.appendChild(list);let ids=[...t.exerciseIds];let renderPicker=()=>{};
+  const renderList=()=>{list.innerHTML="";if(!ids.length){const empty=document.createElement("div");empty.className="location-empty";empty.textContent="No exercises in this workout yet.";list.appendChild(empty);return;}ids.forEach((id,i)=>{const e=getExercise(id);if(!e)return;const row=document.createElement("div");row.className="reorder-item";const grip=document.createElement("span");grip.textContent="↕";const label=document.createElement("span");label.textContent=e.name;const up=iconButton("↑","Move up"),down=iconButton("↓","Move down"),rem=iconButton("×","Remove from workout");rem.classList.add("remove");up.addEventListener("click",()=>{if(i<1)return;[ids[i-1],ids[i]]=[ids[i],ids[i-1]];renderList();});down.addEventListener("click",()=>{if(i>=ids.length-1)return;[ids[i+1],ids[i]]=[ids[i],ids[i+1]];renderList();});rem.addEventListener("click",()=>{ids.splice(i,1);renderList();renderPicker();});row.append(grip,label,up,down,rem);list.appendChild(row);});};renderList();
+  const addH=document.createElement("h3");addH.textContent="Add Existing Exercise";card.appendChild(addH);const picker=document.createElement("div");picker.className="exercise-picker";card.appendChild(picker);renderPicker=()=>{picker.innerHTML="";const available=appData.exerciseLibrary.filter(e=>!ids.includes(e.id)).sort((a,b)=>a.name.localeCompare(b.name));if(!available.length){const empty=document.createElement("div");empty.className="location-empty";empty.textContent="Every exercise in your library is already in this workout.";picker.appendChild(empty);return;}available.forEach(e=>{const b=document.createElement("button");b.type="button";b.className="library-chip";b.textContent=e.name;b.addEventListener("click",()=>{ids.push(e.id);renderList();renderPicker();});picker.appendChild(b);});};renderPicker();
+  const createH=document.createElement("h3");createH.textContent="Create & Add New Exercise";card.appendChild(createH);const newName=makeField("Exercise name","text","","e.g. Incline Dumbbell Press"),tracking=makeField("Tracking","select");[["weighted","Weight × reps"],["reps","Reps"],["time","Time"],["free","Free-form"]].forEach(([v,l])=>{const o=document.createElement("option");o.value=v;o.textContent=l;tracking.input.appendChild(o);});const createButton=document.createElement("button");createButton.type="button";createButton.className="secondary-action";createButton.textContent="＋ Create & Add Exercise";createButton.addEventListener("click",()=>{const exerciseName=normText(newName.input.value);if(!exerciseName)return showToast("Enter an exercise name first.");const existing=findExerciseByNameIn(appData.exerciseLibrary,exerciseName);const ex=existing||ensureExercise(exerciseName,tracking.input.value);if(!ids.includes(ex.id))ids.push(ex.id);newName.input.value="";renderList();renderPicker();showToast(existing?`${ex.name} added to ${t.name}.`:`${ex.name} created and added.`);});card.append(newName.wrap,tracking.wrap,createButton);
+  const note=document.createElement("p");note.className="modal-help";note.textContent="Removing an exercise here only changes future versions of this workout. Its old logs, PRs, and progress remain attached to that exercise.";card.appendChild(note);
   modalActions(card,()=>{
     const old=t.name,n=normText(name.input.value)||old;
     if(appData.templates.some(x=>x.id!==t.id&&normText(x.name).toLowerCase()===n.toLowerCase()))return showToast("Another workout already uses that name.");
     t.name=n;t.emoji=normText(emoji.input.value)||"🏋️";t.cardio=cardioToggle.querySelector("input").checked;t.exerciseIds=ids;
     appData.workouts.forEach(w=>{if(w.templateId===t.id)w.workoutType=n;});
-    if(appData.drafts[t.id])appData.drafts[t.id]=syncDraftToTemplateStructure(t,appData.drafts[t.id]);
+    if(appData.drafts[t.id]&&!draftHasLoggedTrainingData(appData.drafts[t.id]))appData.drafts[t.id]=syncDraftToTemplateStructure(t,appData.drafts[t.id]);
     if(currentTemplateId===t.id)currentWorkoutType=n;
     saveAppData();closeModal();renderWorkoutGrid();
     if(currentTemplateId===t.id){currentDraft=appData.drafts[t.id]||freshDraft(t);appData.drafts[t.id]=currentDraft;renderDraft();}
-    showToast("Workout template updated.");
-  });
+    renderProgress();showToast(`${n} exercises updated. History kept.`);
+  },"Save Workout Changes");
 });}
 
 function openExerciseEditor(exerciseId){const e=getExercise(exerciseId);if(!e)return;openModal(card=>{
@@ -517,7 +606,7 @@ function openExerciseEditor(exerciseId){const e=getExercise(exerciseId);if(!e)re
 function openManageWorkoutsModal(){openModal(card=>{
   modalTitle(card,"Manage Workouts","Your workouts are templates. Exercises keep their history even when moved between templates.");
   const th=document.createElement("h3");th.textContent="Workout Templates";card.appendChild(th);const templates=document.createElement("div");card.appendChild(templates);
-  appData.templates.forEach(t=>{const row=document.createElement("div");row.className="template-row";const main=document.createElement("div");main.className="grow";main.innerHTML=`<strong>${escapeHtml(t.emoji||"🏋️")} ${escapeHtml(t.name)}</strong><small>${t.exerciseIds.length} exercises${t.cardio?" · cardio fields":""}</small>`;const acts=document.createElement("div");acts.className="row-actions";const edit=document.createElement("button");edit.type="button";edit.textContent="Edit";edit.addEventListener("click",()=>openTemplateEditor(t.id));const del=document.createElement("button");del.type="button";del.className="danger";del.textContent="Delete";del.addEventListener("click",()=>{if(!confirm(`Delete the ${t.name} template? Saved workout history will stay.`))return;appData.templates=appData.templates.filter(x=>x.id!==t.id);delete appData.drafts[t.id];if(currentTemplateId===t.id){currentTemplateId="";currentWorkoutType="";currentDraft=null;sessionArea.classList.add("hidden");saveDock.classList.add("hidden");}saveAppData();closeModal();renderWorkoutGrid();showToast("Template deleted. History kept.");});acts.append(edit,del);row.append(main,acts);templates.appendChild(row);});
+  appData.templates.forEach(t=>{const row=document.createElement("div");row.className="template-row";const main=document.createElement("div");main.className="grow";main.innerHTML=`<strong>${escapeHtml(t.emoji||"🏋️")} ${escapeHtml(t.name)}</strong><small>${t.exerciseIds.length} exercises${t.cardio?" · cardio fields":""}</small>`;const acts=document.createElement("div");acts.className="row-actions";const edit=document.createElement("button");edit.type="button";edit.textContent="Exercises";edit.addEventListener("click",()=>openTemplateEditor(t.id));const del=document.createElement("button");del.type="button";del.className="danger";del.textContent="Delete";del.addEventListener("click",()=>{if(!confirm(`Delete the ${t.name} template? Saved workout history will stay.`))return;appData.templates=appData.templates.filter(x=>x.id!==t.id);delete appData.drafts[t.id];if(currentTemplateId===t.id){currentTemplateId="";currentWorkoutType="";currentDraft=null;sessionArea.classList.add("hidden");saveDock.classList.add("hidden");}saveAppData();closeModal();renderWorkoutGrid();showToast("Template deleted. History kept.");});acts.append(edit,del);row.append(main,acts);templates.appendChild(row);});
   const eh=document.createElement("h3");eh.textContent="Exercise Library";card.appendChild(eh);const lib=document.createElement("div");card.appendChild(lib);appData.exerciseLibrary.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(e=>{const row=document.createElement("div");row.className="library-row";const main=document.createElement("div");main.className="grow";main.innerHTML=`<strong>${escapeHtml(e.name)}</strong><small>${escapeHtml(e.tracking)}</small>`;const acts=document.createElement("div");acts.className="row-actions";const edit=document.createElement("button");edit.type="button";edit.textContent="Edit";edit.addEventListener("click",()=>openExerciseEditor(e.id));acts.appendChild(edit);row.append(main,acts);lib.appendChild(row);});
   const create=document.createElement("button");create.type="button";create.className="secondary-action";create.textContent="＋ Create Exercise";create.addEventListener("click",()=>{closeModal();openAddExerciseModal();});card.appendChild(create);const close=document.createElement("button");close.type="button";close.className="secondary-action";close.textContent="Done";close.addEventListener("click",closeModal);card.appendChild(close);
 });}
@@ -538,6 +627,7 @@ function detectNewPRs(workout,excludeWorkoutId=null){
 function sessionHasResults(draft){return (draft.exercises||[]).some(ex=>filledSets(ex).length)||(currentTemplate()?.cardio&&Object.entries(draft.cardio||{}).some(([k,v])=>k!=="type"&&normText(v)));}
 function saveWorkout(){
   saveCurrentDraft();const d=currentDraft;if(!d)return;if(!sessionHasResults(d)&&!confirm("There are no set results or cardio numbers yet. Save this workout anyway?"))return;
+  if(d.location){d.location=ensureManagedLocation(d.location);setActiveLocation(d.location);sessionLocation.value=d.location;}
   const existingId=d.existingWorkoutId||null,prs=detectNewPRs(d,existingId),now=new Date().toISOString(),id=existingId||uid("workout"),idx=appData.workouts.findIndex(w=>w.id===id),old=idx>=0?appData.workouts[idx]:null;
   const previousAchieved=Array.isArray(old?.achievedPRs)?old.achievedPRs:[];
   const newlyAchieved=prs.map(p=>({...p,at:now}));
@@ -780,7 +870,7 @@ function mergeAppData(current,incomingRaw){
     templates,
     exerciseLibrary:incoming.exerciseLibrary,
     drafts:{...(incoming.drafts||{}),...(current.drafts||{})},
-    settings:{...(incoming.settings||{}),...(current.settings||{}),locationNames:{...(incoming.settings?.locationNames||{}),...(current.settings?.locationNames||{})}},
+    settings:{...(incoming.settings||{}),...(current.settings||{}),locationNames:{...(incoming.settings?.locationNames||{}),...(current.settings?.locationNames||{})},locations:uniqueLocationNames([...(incoming.settings?.locations||[]),...(current.settings?.locations||[])]),activeLocation:current.settings?.activeLocation||incoming.settings?.activeLocation||""},
     lastBackupAt:current.lastBackupAt||incoming.lastBackupAt||null,
     lastBackupWorkoutCount:Number(current.lastBackupWorkoutCount)||0,
     backupHistory
